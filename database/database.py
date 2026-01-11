@@ -311,6 +311,30 @@ class Database:
         row = await cursor.fetchone()
         return row['count']
 
+    async def get_driver_by_yandex_id(self, yandex_driver_id: str) -> Optional[Driver]:
+        cursor = await self.conn.execute(
+            'SELECT * FROM drivers WHERE yandex_driver_id = ?',
+            (yandex_driver_id,)
+        )
+        row = await cursor.fetchone()
+        if row:
+            return Driver(**dict(row))
+        return None
+
+    async def search_drivers(self, query: str) -> List[Driver]:
+        q = f'%{query}%'
+        cursor = await self.conn.execute(
+            '''SELECT * FROM drivers WHERE
+               name LIKE ? OR
+               callsign LIKE ? OR
+               car_model LIKE ? OR
+               yandex_driver_id LIKE ?
+               LIMIT 20''',
+            (q, q, q, q)
+        )
+        rows = await cursor.fetchall()
+        return [Driver(**dict(row)) for row in rows]
+
     async def backup_database(self, backup_path: str):
         backup_conn = await aiosqlite.connect(backup_path)
         await self.conn.backup(backup_conn)
